@@ -2,23 +2,17 @@ import { query } from '../config/database';
 import { Immersion, CreateImmersionDTO, UpdateImmersionDTO } from '../models/Immersion';
 
 export class ImmersionService {
-    /**
-     * Criar uma nova imersão
-     */
     static async create(data: CreateImmersionDTO): Promise<Immersion> {
         const result = await query(
-            `INSERT INTO immersions (name, description, data, local, qtd_lote, valor, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            `INSERT INTO immersions (name, description, data, local, qtd_lote, created_at, updated_at)
+          VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
        RETURNING *`,
-            [data.name, data.description || null, data.data, data.local, data.qtd_lote, data.valor]
+            [data.name, data.description || null, data.data, data.local, data.qtd_lote]
         );
 
         return result.rows[0];
     }
 
-    /**
-     * Obter imersão por ID
-     */
     static async getById(id: number): Promise<Immersion | null> {
         const result = await query(
             `SELECT * FROM immersions WHERE id = $1`,
@@ -28,9 +22,6 @@ export class ImmersionService {
         return result.rows[0] || null;
     }
 
-    /**
-     * Obter todas as imersões
-     */
     static async getAll(limit?: number, offset?: number): Promise<Immersion[]> {
         let sql = `SELECT * FROM immersions ORDER BY data DESC`;
         const params: any[] = [];
@@ -49,9 +40,6 @@ export class ImmersionService {
         return result.rows;
     }
 
-    /**
-     * Obter imersões ativas (futuras)
-     */
     static async getActive(): Promise<Immersion[]> {
         const result = await query(
             `SELECT * FROM immersions WHERE data >= CURRENT_DATE ORDER BY data ASC`
@@ -60,9 +48,6 @@ export class ImmersionService {
         return result.rows;
     }
 
-    /**
-     * Atualizar imersão
-     */
     static async update(id: number, data: UpdateImmersionDTO): Promise<Immersion | null> {
         const fields: string[] = [];
         const values: any[] = [];
@@ -88,9 +73,9 @@ export class ImmersionService {
             fields.push(`qtd_lote = $${paramCount++}`);
             values.push(data.qtd_lote);
         }
-        if (data.valor !== undefined) {
-            fields.push(`valor = $${paramCount++}`);
-            values.push(data.valor);
+        if (data.image_path !== undefined) {
+            fields.push(`image_path = $${paramCount++}`);
+            values.push(data.image_path);
         }
 
         if (fields.length === 0) {
@@ -108,9 +93,6 @@ export class ImmersionService {
         return result.rows[0] || null;
     }
 
-    /**
-     * Deletar imersão
-     */
     static async delete(id: number): Promise<boolean> {
         const result = await query(
             `DELETE FROM immersions WHERE id = $1`,
@@ -120,9 +102,6 @@ export class ImmersionService {
         return result.rowCount! > 0;
     }
 
-    /**
-     * Obter imersão com seus lotes
-     */
     static async getWithLots(id: number) {
         const result = await query(
             `SELECT i.*, 

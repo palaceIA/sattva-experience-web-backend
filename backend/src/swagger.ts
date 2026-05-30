@@ -1,12 +1,12 @@
 const isProduction = process.env.NODE_ENV === 'production';
 const authSecurityDefinition = isProduction
   ? {
-      bearerAuth: {
-        type: 'http',
-        scheme: 'bearer',
-        bearerFormat: 'JWT'
-      }
+    bearerAuth: {
+      type: 'http',
+      scheme: 'bearer',
+      bearerFormat: 'JWT'
     }
+  }
   : {};
 const authMeSecurity = isProduction ? [{ bearerAuth: [] }] : undefined;
 
@@ -51,7 +51,7 @@ export const swaggerDocument = {
           data: { type: 'string', format: 'date', example: '2026-07-15' },
           local: { type: 'string', example: 'Guarujá, SP' },
           qtd_lote: { type: 'integer', example: 3 },
-          valor: { type: 'number', format: 'float', example: 5000.0 },
+          image_path: { type: 'string', example: 'https://project.supabase.co/storage/v1/object/public/immersion-images/1/image.png' },
           created_at: { type: 'string', format: 'date-time' },
           updated_at: { type: 'string', format: 'date-time' }
         }
@@ -67,6 +67,35 @@ export const swaggerDocument = {
           data_inicio: { type: 'string', format: 'date', example: '2026-06-01' },
           data_fim: { type: 'string', format: 'date', example: '2026-06-15' },
           created_at: { type: 'string', format: 'date-time' }
+        }
+      },
+      LotWithImmersion: {
+        type: 'object',
+        properties: {
+          id: { type: 'integer', example: 1 },
+          id_immersion: { type: 'integer', example: 1 },
+          immersion_name: { type: 'string', example: 'Imersão de Verão 2026' },
+          lote_number: { type: 'integer', example: 1 },
+          valor: { type: 'number', format: 'float', example: 4500.0 },
+          quantity_available: { type: 'integer', example: 50 },
+          data_inicio: { type: 'string', format: 'date', example: '2026-06-01' },
+          data_fim: { type: 'string', format: 'date', example: '2026-06-15' },
+          created_at: { type: 'string', format: 'date-time' }
+        }
+      },
+      ImmersionImageUploadResponse: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: true },
+          message: { type: 'string', example: 'Imagem enviada com sucesso' },
+          data: {
+            type: 'object',
+            properties: {
+              path: { type: 'string', example: '1/550e8400-e29b-41d4-a716-446655440000-image.png' },
+              publicUrl: { type: 'string', example: 'https://project.supabase.co/storage/v1/object/public/immersion-images/1/image.png' },
+              immersion: { $ref: '#/components/schemas/Immersion' }
+            }
+          }
         }
       },
       LoginResponse: {
@@ -165,14 +194,13 @@ export const swaggerDocument = {
             'application/json': {
               schema: {
                 type: 'object',
-                required: ['name', 'data', 'local', 'qtd_lote', 'valor'],
+                required: ['name', 'data', 'local', 'qtd_lote'],
                 properties: {
                   name: { type: 'string' },
                   description: { type: 'string' },
                   data: { type: 'string', format: 'date' },
                   local: { type: 'string' },
-                  qtd_lote: { type: 'integer' },
-                  valor: { type: 'number', format: 'float' }
+                  qtd_lote: { type: 'integer' }
                 }
               }
             }
@@ -195,6 +223,96 @@ export const swaggerDocument = {
             }
           }
         }
+      },
+      patch: {
+        summary: 'Atualizar parcialmente uma imersão',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  description: { type: 'string' },
+                  data: { type: 'string', format: 'date' },
+                  local: { type: 'string' },
+                  qtd_lote: { type: 'integer' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Imersão atualizada com sucesso',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    message: { type: 'string' },
+                    data: { $ref: '#/components/schemas/Immersion' }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    '/api/immersions/{id}/image': {
+      post: {
+        summary: 'Enviar imagem da imersão para o Supabase',
+        requestBody: {
+          required: true,
+          content: {
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                required: ['id', 'image'],
+                properties: {
+                  id: {
+                    type: 'integer',
+                    example: 1,
+                    description: 'ID da imersão usado pelo upload da imagem'
+                  },
+                  image: {
+                    type: 'string',
+                    format: 'binary'
+                  }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Imagem enviada com sucesso',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ImmersionImageUploadResponse' }
+              }
+            }
+          },
+          '400': {
+            description: 'Requisição inválida',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' }
+              }
+            }
+          },
+          '503': {
+            description: 'Supabase storage não configurado',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' }
+              }
+            }
+          }
+        }
       }
     },
     '/api/lots': {
@@ -212,7 +330,7 @@ export const swaggerDocument = {
                     count: { type: 'integer' },
                     data: {
                       type: 'array',
-                      items: { $ref: '#/components/schemas/Lot' }
+                      items: { $ref: '#/components/schemas/LotWithImmersion' }
                     }
                   }
                 }
@@ -259,7 +377,43 @@ export const swaggerDocument = {
             }
           }
         }
+      },
+      patch: {
+        summary: 'Atualizar parcialmente um lote',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  valor: { type: 'number', format: 'float' },
+                  quantity_available: { type: 'integer' },
+                  data_inicio: { type: 'string', format: 'date' },
+                  data_fim: { type: 'string', format: 'date' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Lote atualizado com sucesso',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    message: { type: 'string' },
+                    data: { $ref: '#/components/schemas/Lot' }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
-    }
+    },
   }
 };

@@ -5,7 +5,7 @@ export interface Immersion {
     data: Date;
     local: string;
     qtd_lote: number;
-    valor: number;
+    image_path?: string;
     created_at: Date;
     updated_at: Date;
 }
@@ -16,7 +16,6 @@ export interface CreateImmersionDTO {
     data: Date;
     local: string;
     qtd_lote: number;
-    valor: number;
 }
 
 export interface UpdateImmersionDTO {
@@ -25,5 +24,5 @@ export interface UpdateImmersionDTO {
     data?: Date;
     local?: string;
     qtd_lote?: number;
-    valor?: number;
+    image_path?: string;
 }

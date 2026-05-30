@@ -15,7 +15,7 @@ const fileFilter = (req: Express.Request, file: Express.Multer.File, cb: multer.
 export const lotImageUpload = multer({
     storage,
     limits: {
-        fileSize: 5 * 1024 * 1024 // 5 MB
+        fileSize: 5 * 1024 * 1024
     },
     fileFilter
 }).single('image');

@@ -9,6 +9,7 @@ import lotRoutes from './routes/lotRoutes';
 import authRoutes from './routes/authRoutes';
 import { swaggerDocument } from './swagger';
 import { ensureBucket, isSupabaseConfigured } from './config/supabase';
+import { testConnection } from './config/database';
 
 const app: Express = express();
 const port = process.env.PORT || 3000;
@@ -32,7 +33,7 @@ const corsOptions = {
 };
 
 const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutos
+    windowMs: 15 * 60 * 1000,
     max: 100,
     standardHeaders: true,
     legacyHeaders: false,
@@ -40,14 +41,13 @@ const apiLimiter = rateLimit({
 });
 
 const authLoginLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutos
+    windowMs: 15 * 60 * 1000,
     max: 10,
     standardHeaders: true,
     legacyHeaders: false,
     message: 'Muitas tentativas de login, tente novamente mais tarde.'
 });
 
-// Middleware
 app.use(helmet());
 app.disable('x-powered-by');
 app.use(cors(corsOptions));
@@ -60,12 +60,10 @@ app.use((req, res, next) => {
 app.use('/api', apiLimiter);
 app.use('/api/auth/login', authLoginLimiter);
 
-// Health check
 app.get('/health', (req, res) => {
     res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-// Rota raiz
 app.get('/', (req, res) => {
     res.json({
         message: 'Sattva Experience API',
@@ -84,12 +82,10 @@ app.get('/', (req, res) => {
 app.use(['/api-docs', '/api/v1/docs'], swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.get(['/api-docs-json', '/api/v1/docs-json'], (req, res) => res.json(swaggerDocument));
 
-// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/immersions', immersionRoutes);
 app.use('/api/lots', lotRoutes);
 
-// Global error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
     console.error('Error:', err);
     res.status(500).json({
@@ -98,7 +94,6 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
     });
 });
 
-// 404 handler - DEVE SER O ULTIMO
 app.use((req, res) => {
     res.status(404).json({
         error: 'Rota nao encontrada',
@@ -106,11 +101,18 @@ app.use((req, res) => {
     });
 });
 
-// Start server
 async function startServer() {
+    try {
+        await testConnection();
+    } catch (error: any) {
+        console.error('Falha ao conectar ao banco de dados. Verifique o DATABASE_URL e a senha do Supabase.');
+        console.error(error?.message || error);
+        process.exit(1);
+    }
+
     if (isSupabaseConfigured) {
         try {
-            await ensureBucket('lot-images');
+            await ensureBucket('immersion-images');
         } catch (error: any) {
             console.warn('Falha ao inicializar o Supabase Storage:', error.message || error);
         }

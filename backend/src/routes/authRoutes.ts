@@ -12,7 +12,6 @@ if (!JWT_SECRET) {
 }
 const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || '1h') as jwt.SignOptions['expiresIn'];
 
-// POST /api/auth/login
 router.post('/login', async (req: Request, res: Response) => {
     const { name, password } = req.body;
 
@@ -23,7 +22,6 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 
     try {
-        // Busca o unico usuario no banco
         const result = await pool.query('SELECT * FROM users WHERE name = $1', [name]);
         const user = result.rows[0];
 
@@ -33,7 +31,6 @@ router.post('/login', async (req: Request, res: Response) => {
             });
         }
 
-        // Compara a senha com bcrypt
         const isValidPassword = await bcrypt.compare(password, user.password);
 
         if (!isValidPassword) {
@@ -42,7 +39,6 @@ router.post('/login', async (req: Request, res: Response) => {
             });
         }
 
-        // Gera o token JWT
         const token = jwt.sign(
             { id: user.id, name: user.name },
             JWT_SECRET,
@@ -59,6 +55,12 @@ router.post('/login', async (req: Request, res: Response) => {
         });
 
     } catch (error) {
+        if ((error as any)?.code === '28P01') {
+            return res.status(503).json({
+                error: 'Falha na autenticacao com o banco de dados. Verifique o DATABASE_URL e a senha do Supabase.'
+            });
+        }
+
         console.error('Erro no login:', error);
         return res.status(500).json({
             error: 'Erro interno do servidor'
@@ -68,7 +70,6 @@ router.post('/login', async (req: Request, res: Response) => {
 
 const useAuth = process.env.NODE_ENV === 'production';
 
-// GET /api/auth/me - Retorna dados do usuario logado
 if (useAuth) {
     router.get('/me', authMiddleware, async (req: AuthRequest, res: Response) => {
         try {
@@ -82,7 +83,7 @@ if (useAuth) {
                 'SELECT id, name, created_at FROM users WHERE id = $1',
                 [userId]
             );
-            
+
             const user = result.rows[0];
 
             if (!user) {

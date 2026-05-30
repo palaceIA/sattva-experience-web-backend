@@ -1,24 +1,21 @@
 import { Request, Response } from 'express';
+import { v4 as uuidv4 } from 'uuid';
 import { ImmersionService } from '../services/ImmersionService';
 import { CreateImmersionDTO, UpdateImmersionDTO } from '../models/Immersion';
+import { isSupabaseConfigured, supabase } from '../config/supabase';
 
 export class ImmersionController {
-    /**
-     * Criar nova imersão
-     * POST /api/immersions
-     */
     static async create(req: Request, res: Response): Promise<void> {
         try {
-            const { name, description, data, local, qtd_lote, valor } = req.body;
+            const { name, description, data, local, qtd_lote } = req.body;
 
-            // Validações
-            if (!name || !data || !local || !qtd_lote || !valor) {
+            if (!name || !data || !local || !qtd_lote) {
                 res.status(400).json({ error: 'Campos obrigatórios faltando' });
                 return;
             }
 
-            if (qtd_lote <= 0 || valor <= 0) {
-                res.status(400).json({ error: 'qtd_lote e valor devem ser maiores que zero' });
+            if (qtd_lote <= 0) {
+                res.status(400).json({ error: 'qtd_lote deve ser maior que zero' });
                 return;
             }
 
@@ -27,8 +24,7 @@ export class ImmersionController {
                 description,
                 data: new Date(data),
                 local,
-                qtd_lote,
-                valor
+                qtd_lote
             });
 
             res.status(201).json({
@@ -41,10 +37,6 @@ export class ImmersionController {
         }
     }
 
-    /**
-     * Obter imersão por ID
-     * GET /api/immersions/:id
-     */
     static async getById(req: Request, res: Response): Promise<void> {
         try {
             const { id } = req.params;
@@ -64,10 +56,6 @@ export class ImmersionController {
         }
     }
 
-    /**
-     * Obter imersão com seus lotes
-     * GET /api/immersions/:id/with-lots
-     */
     static async getWithLots(req: Request, res: Response): Promise<void> {
         try {
             const { id } = req.params;
@@ -87,10 +75,6 @@ export class ImmersionController {
         }
     }
 
-    /**
-     * Listar todas as imersões
-     * GET /api/immersions
-     */
     static async getAll(req: Request, res: Response): Promise<void> {
         try {
             const limit = req.query.limit ? Number(req.query.limit) : undefined;
@@ -108,10 +92,6 @@ export class ImmersionController {
         }
     }
 
-    /**
-     * Listar imersões ativas (futuras)
-     * GET /api/immersions/active
-     */
     static async getActive(req: Request, res: Response): Promise<void> {
         try {
             const immersions = await ImmersionService.getActive();
@@ -126,14 +106,85 @@ export class ImmersionController {
         }
     }
 
-    /**
-     * Atualizar imersão
-     * PUT /api/immersions/:id
-     */
+    static async uploadImage(req: Request, res: Response): Promise<void> {
+        try {
+            const { id: bodyId } = req.body;
+            const file = req.file as Express.Multer.File | undefined;
+
+            if (!file) {
+                res.status(400).json({ error: 'Arquivo de imagem não fornecido' });
+                return;
+            }
+
+            if (bodyId === undefined || bodyId === null || bodyId === '') {
+                res.status(400).json({ error: 'Campo id é obrigatório no body da requisição' });
+                return;
+            }
+
+            const immersionId = Number(bodyId);
+
+            if (Number.isNaN(immersionId) || immersionId <= 0) {
+                res.status(400).json({ error: 'ID de imersão inválido' });
+                return;
+            }
+
+            if (!isSupabaseConfigured || !supabase) {
+                res.status(503).json({ error: 'Supabase storage não configurado. Upload de imagens indisponível.' });
+                return;
+            }
+
+            const bucket = 'immersion-images';
+            const fileName = `${immersionId}/${uuidv4()}-${file.originalname}`;
+            const { data, error } = await supabase.storage
+                .from(bucket)
+                .upload(fileName, file.buffer, {
+                    contentType: file.mimetype,
+                    cacheControl: 'public, max-age=31536000',
+                    upsert: false
+                });
+
+            if (error) {
+                console.error('Supabase upload error:', error.message);
+                res.status(500).json({ error: 'Falha ao enviar imagem para o Supabase' });
+                return;
+            }
+
+            const publicUrlResponse = supabase.storage
+                .from(bucket)
+                .getPublicUrl(fileName);
+
+            const publicUrl = publicUrlResponse.data?.publicUrl;
+            if (!publicUrl) {
+                console.error('Supabase getPublicUrl failed:', publicUrlResponse);
+                res.status(500).json({ error: 'Erro ao obter URL pública da imagem' });
+                return;
+            }
+
+            const immersion = await ImmersionService.update(immersionId, { image_path: publicUrl });
+
+            if (!immersion) {
+                res.status(404).json({ error: 'Imersão não encontrada' });
+                return;
+            }
+
+            res.status(200).json({
+                success: true,
+                message: 'Imagem enviada com sucesso',
+                data: {
+                    path: data.path,
+                    publicUrl,
+                    immersion
+                }
+            });
+        } catch (error: any) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+
     static async update(req: Request, res: Response): Promise<void> {
         try {
             const { id } = req.params;
-            const { name, description, data, local, qtd_lote, valor } = req.body;
+            const { name, description, data, local, qtd_lote, image_path } = req.body;
 
             const updateData: UpdateImmersionDTO = {};
             if (name !== undefined) updateData.name = name;
@@ -141,7 +192,7 @@ export class ImmersionController {
             if (data !== undefined) updateData.data = new Date(data);
             if (local !== undefined) updateData.local = local;
             if (qtd_lote !== undefined) updateData.qtd_lote = qtd_lote;
-            if (valor !== undefined) updateData.valor = valor;
+            if (image_path !== undefined) updateData.image_path = image_path;
 
             if (Object.keys(updateData).length === 0) {
                 res.status(400).json({ error: 'Nenhum campo para atualizar' });
@@ -165,10 +216,6 @@ export class ImmersionController {
         }
     }
 
-    /**
-     * Deletar imersão
-     * DELETE /api/immersions/:id
-     */
     static async delete(req: Request, res: Response): Promise<void> {
         try {
             const { id } = req.params;

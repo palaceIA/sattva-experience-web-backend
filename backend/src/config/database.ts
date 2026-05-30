@@ -24,4 +24,14 @@ export const query = async (text: string, params?: any[]) => {
     return pool.query(text, params);
 };
 
+export const testConnection = async () => {
+    const client = await pool.connect();
+
+    try {
+        await client.query('SELECT 1');
+    } finally {
+        client.release();
+    }
+};
+
 export default pool;

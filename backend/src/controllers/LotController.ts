@@ -5,15 +5,10 @@ import { CreateLotDTO, UpdateLotDTO } from '../models/Lot';
 import { supabase, isSupabaseConfigured } from '../config/supabase';
 
 export class LotController {
-    /**
-     * Criar novo lote
-     * POST /api/lots
-     */
     static async create(req: Request, res: Response): Promise<void> {
         try {
             const { id_immersion, lote_number, valor, quantity_available, data_inicio, data_fim } = req.body;
 
-            // Validações
             if (!id_immersion || !lote_number || !valor || quantity_available === undefined || !data_inicio || !data_fim) {
                 res.status(400).json({ error: 'Campos obrigatórios faltando' });
                 return;
@@ -51,10 +46,6 @@ export class LotController {
         }
     }
 
-    /**
-     * Upload de imagem para o lote
-     * POST /api/lots/:id/image
-     */
     static async uploadImage(req: Request, res: Response): Promise<void> {
         try {
             const { id } = req.params;
@@ -116,10 +107,6 @@ export class LotController {
         }
     }
 
-    /**
-     * Obter lote por ID
-     * GET /api/lots/:id
-     */
     static async getById(req: Request, res: Response): Promise<void> {
         try {
             const { id } = req.params;
@@ -139,10 +126,6 @@ export class LotController {
         }
     }
 
-    /**
-     * Listar todos os lotes
-     * GET /api/lots
-     */
     static async getAll(req: Request, res: Response): Promise<void> {
         try {
             const limit = req.query.limit ? Number(req.query.limit) : undefined;
@@ -160,10 +143,6 @@ export class LotController {
         }
     }
 
-    /**
-     * Obter lotes de uma imersão
-     * GET /api/lots/immersion/:id
-     */
     static async getByImmersionId(req: Request, res: Response): Promise<void> {
         try {
             const { id } = req.params;
@@ -179,10 +158,6 @@ export class LotController {
         }
     }
 
-    /**
-     * Obter lote ativo de uma imersão
-     * GET /api/lots/immersion/:id/active
-     */
     static async getActiveLot(req: Request, res: Response): Promise<void> {
         try {
             const { id } = req.params;
@@ -203,10 +178,6 @@ export class LotController {
         }
     }
 
-    /**
-     * Obter lotes próximos de expirar
-     * GET /api/lots/upcoming-expiry
-     */
     static async getUpcomingLotsToExpire(req: Request, res: Response): Promise<void> {
         try {
             const daysBeforeExpiry = req.query.days ? Number(req.query.days) : 7;
@@ -223,10 +194,6 @@ export class LotController {
         }
     }
 
-    /**
-     * Obter lotes expirados
-     * GET /api/lots/expired
-     */
     static async getExpiredLots(req: Request, res: Response): Promise<void> {
         try {
             const lots = await LotService.getExpiredLots();
@@ -241,10 +208,6 @@ export class LotController {
         }
     }
 
-    /**
-     * Atualizar lote
-     * PUT /api/lots/:id
-     */
     static async update(req: Request, res: Response): Promise<void> {
         try {
             const { id } = req.params;
@@ -278,10 +241,6 @@ export class LotController {
         }
     }
 
-    /**
-     * Decrementar quantidade disponível (quando alguém compra)
-     * POST /api/lots/:id/buy
-     */
     static async buy(req: Request, res: Response): Promise<void> {
         try {
             const { id } = req.params;
@@ -309,10 +268,6 @@ export class LotController {
         }
     }
 
-    /**
-     * Incrementar quantidade disponível
-     * POST /api/lots/:id/add-quantity
-     */
     static async addQuantity(req: Request, res: Response): Promise<void> {
         try {
             const { id } = req.params;
@@ -340,10 +295,6 @@ export class LotController {
         }
     }
 
-    /**
-     * Deletar lote
-     * DELETE /api/lots/:id
-     */
     static async delete(req: Request, res: Response): Promise<void> {
         try {
             const { id } = req.params;
