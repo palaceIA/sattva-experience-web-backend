@@ -1,4 +1,4 @@
-import pool from './config/database';
+import pool from '../config/database';
 
 /**
  * Script de seed com dados de exemplo para testes
