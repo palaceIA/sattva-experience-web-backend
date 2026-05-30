@@ -102,9 +102,10 @@ export class LotService {
             `SELECT l.*, i.name as immersion_name
        FROM lots l
        JOIN immersions i ON l.id_immersion = i.id
-       WHERE l.data_fim <= CURRENT_DATE + INTERVAL '${daysBeforeExpiry} days'
+       WHERE l.data_fim <= CURRENT_DATE + $1 * INTERVAL '1 day'
        AND l.data_fim > CURRENT_DATE
-       ORDER BY l.data_fim ASC`
+       ORDER BY l.data_fim ASC`,
+            [daysBeforeExpiry]
         );
 
         return result.rows;

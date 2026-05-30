@@ -1,10 +1,16 @@
 import { Router } from 'express';
 import { LotController } from '../controllers/LotController';
+import { authMiddleware } from '../middleware/authMiddleware';
+import { lotImageUpload } from '../middleware/uploadMiddleware';
 
 const router = Router();
+const useAuth = process.env.NODE_ENV === 'production';
+if (useAuth) {
+    router.use(authMiddleware);
+}
 
-// Rotas para Lotes
 router.post('/', LotController.create);
+router.post('/:id/image', lotImageUpload, LotController.uploadImage);
 router.get('/', LotController.getAll);
 router.get('/expired', LotController.getExpiredLots);
 router.get('/upcoming-expiry', LotController.getUpcomingLotsToExpire);
@@ -14,7 +20,6 @@ router.post('/:id/buy', LotController.buy);
 router.post('/:id/add-quantity', LotController.addQuantity);
 router.delete('/:id', LotController.delete);
 
-// Rotas para Lotes de uma Imersão
 router.get('/immersion/:id', LotController.getByImmersionId);
 router.get('/immersion/:id/active', LotController.getActiveLot);
 

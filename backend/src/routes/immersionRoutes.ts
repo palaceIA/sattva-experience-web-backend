@@ -1,9 +1,13 @@
 import { Router } from 'express';
 import { ImmersionController } from '../controllers/ImmersionController';
+import { authMiddleware } from '../middleware/authMiddleware';
 
 const router = Router();
+const useAuth = process.env.NODE_ENV === 'production';
+if (useAuth) {
+    router.use(authMiddleware);
+}
 
-// Rotas para Imersões
 router.post('/', ImmersionController.create);
 router.get('/', ImmersionController.getAll);
 router.get('/active', ImmersionController.getActive);

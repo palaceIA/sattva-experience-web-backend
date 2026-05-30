@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
+import { v4 as uuidv4 } from 'uuid';
 import { LotService } from '../services/LotService';
 import { CreateLotDTO, UpdateLotDTO } from '../models/Lot';
+import { supabase, isSupabaseConfigured } from '../config/supabase';
 
 export class LotController {
     /**
@@ -43,6 +45,71 @@ export class LotController {
                 success: true,
                 message: 'Lote criado com sucesso',
                 data: lot
+            });
+        } catch (error: any) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+
+    /**
+     * Upload de imagem para o lote
+     * POST /api/lots/:id/image
+     */
+    static async uploadImage(req: Request, res: Response): Promise<void> {
+        try {
+            const { id } = req.params;
+            const file = req.file as Express.Multer.File | undefined;
+
+            if (!file) {
+                res.status(400).json({ error: 'Arquivo de imagem não fornecido' });
+                return;
+            }
+
+            const lotId = Number(id);
+            if (Number.isNaN(lotId) || lotId <= 0) {
+                res.status(400).json({ error: 'ID de lote inválido' });
+                return;
+            }
+
+            if (!isSupabaseConfigured || !supabase) {
+                res.status(503).json({ error: 'Supabase storage não configurado. Upload de imagens indisponível.' });
+                return;
+            }
+
+            const bucket = 'lot-images';
+            const fileName = `${lotId}/${uuidv4()}-${file.originalname}`;
+            const { data, error } = await supabase.storage
+                .from(bucket)
+                .upload(fileName, file.buffer, {
+                    contentType: file.mimetype,
+                    cacheControl: 'public, max-age=31536000',
+                    upsert: false
+                });
+
+            if (error) {
+                console.error('Supabase upload error:', error.message);
+                res.status(500).json({ error: 'Falha ao enviar imagem para o Supabase' });
+                return;
+            }
+
+            const publicUrlResponse = supabase.storage
+                .from(bucket)
+                .getPublicUrl(fileName);
+
+            const publicUrl = publicUrlResponse.data?.publicUrl;
+            if (!publicUrl) {
+                console.error('Supabase getPublicUrl failed:', publicUrlResponse);
+                res.status(500).json({ error: 'Erro ao obter URL pública da imagem' });
+                return;
+            }
+
+            res.status(200).json({
+                success: true,
+                message: 'Imagem enviada com sucesso',
+                data: {
+                    path: data.path,
+                    publicUrl
+                }
             });
         } catch (error: any) {
             res.status(500).json({ error: error.message });
@@ -95,7 +162,7 @@ export class LotController {
 
     /**
      * Obter lotes de uma imersão
-     * GET /api/immersions/:id/lots
+     * GET /api/lots/immersion/:id
      */
     static async getByImmersionId(req: Request, res: Response): Promise<void> {
         try {
@@ -114,7 +181,7 @@ export class LotController {
 
     /**
      * Obter lote ativo de uma imersão
-     * GET /api/immersions/:id/active-lot
+     * GET /api/lots/immersion/:id/active
      */
     static async getActiveLot(req: Request, res: Response): Promise<void> {
         try {

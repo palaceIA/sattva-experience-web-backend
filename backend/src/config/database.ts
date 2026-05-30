@@ -1,10 +1,15 @@
 import { Pool, PoolClient } from 'pg';
-import dotenv from 'dotenv';
+import * as dotenv from 'dotenv';
 
 dotenv.config();
 
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+    throw new Error('DATABASE_URL is required in .env. Configure your local Postgres or Supabase database connection string.');
+}
+
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL || 'postgresql://localhost:5432/sattva_experience'
+    connectionString: databaseUrl
 });
 
 pool.on('error', (err) => {
